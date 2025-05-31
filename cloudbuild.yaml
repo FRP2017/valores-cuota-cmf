@@ -29,7 +29,7 @@ steps:
       - '--memory=512Mi'
       - '--cpu=1'
       - '--timeout=300s'
-      - '--no-allow-unauthenticated'
+      - '--allow-unauthenticated'
     id: 'Desplegar en Cloud Run'
 
 images:
