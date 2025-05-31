@@ -1,0 +1,46 @@
+# cloudbuild.yaml
+steps:
+  # 1. Construir la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - '${_REGION_GCP}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '.'
+    id: 'Construir Imagen'
+
+  # 2. Enviar la imagen a Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION_GCP}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${COMMIT_SHA}']
+    id: 'Enviar Imagen a Artifact Registry'
+
+  # 3. Desplegar la nueva imagen en Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE_NAME}'
+      - '--image=${_REGION_GCP}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${COMMIT_SHA}'
+      - '--region=${_REGION_GCP}'
+      - '--platform=managed'
+      - '--service-account=${_CLOUDRUN_SA_EMAIL}'
+      - '--set-env-vars=GCS_BUCKET_NAME=${_GCS_BUCKET}' # Variable de entorno para el bucket
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--timeout=300s'
+      - '--no-allow-unauthenticated'
+    id: 'Desplegar en Cloud Run'
+
+images:
+  - '${_REGION_GCP}-docker.pkg.dev/${PROJECT_ID}/${_AR_REPO}/${_SERVICE_NAME}:${COMMIT_SHA}'
+
+substitutions:
+  _SERVICE_NAME: 'cmf-valores-cuota-extractor'
+  _REGION_GCP: 'us-east1' # ACTUALIZADO A TU REGIÓN
+  _AR_REPO: 'cmf-repo'
+  _GCS_BUCKET: 'valores-cuota-cmf' # ACTUALIZADO A TU NOMBRE DE BUCKET
+  _CLOUDRUN_SA_EMAIL: 'cmf-downloader-sa@cmf-analisis.iam.gserviceaccount.com' # Ejemplo, usa tu SA de Cloud Run
+
+options:
+  logging: CLOUD_LOGGING_ONLY
